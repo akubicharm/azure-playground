@@ -1,0 +1,6 @@
+# iot-edge のモジュールデプロイを Kubernetes で実現する
+
+. ACR のデプロイ
+. AKS のデプロイ
+. IoT Edge Provider のデプロイ
+. モジュールのデプロイ
