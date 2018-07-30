@@ -1,6 +1,6 @@
 include::variables.yaml[]
 
-## AKS (Azure Kubernetes Service)のデプロイ
+# AKS (Azure Kubernetes Service)のデプロイ
 
 ### 参照URL
 AKS::
