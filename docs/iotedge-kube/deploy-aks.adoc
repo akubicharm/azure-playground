@@ -1,0 +1,226 @@
+include::variables.yaml[]
+
+## AKS (Azure Kubernetes Service)のデプロイ
+
+### 参照URL
+AKS::
+https://docs.microsoft.com/en-us/azure/aks/
+
+ACR:: https://docs.microsoft.com/en-us/azure/container-registry/container-registry-get-started-azure-cli
+
+
+### 環境変数
+az コマンドのパラメータに設定する値を環境変数に設定しておくと、コマンドが便利使えるようになりますので、このハンズオンでは各自の環境ごとに異なる可変の値を環境変数に設定して利用していきます。
+
+|===
+|名称|環境変数名|値
+
+|リージョン
+|AZ_LOC
+|{location}
+
+|リソースグループ名
+|AZ_RG
+|{rg-name}
+
+|Azure Container Registory名
+|AZ_ACR_NAME
+|任意の名称。 +
+一意の名称である必要があるので、<azure user name> + "acr" などが好ましい。azure user name が `taro` の場合は、`taroacr`
+
+|Azure Kubernetes Cluster名
+|AZ_AKS_NAME
+|myAKSCluster
+
+|Application ID
+|AZ_APP_ID
+|Servic Principal登録時に作成されるappID
+
+|Password
+|AZ_PASSWORD
+|Service Princical登録時に作成されるpassword
+
+|Azure Container Registry ID
+|AZ_ACR_ID
+|`az acr show` コマンドで出力される acrId
+
+|AKS Kubernetes バージョン
+|AZ_AKS_KUBE_VERSION
+|{aks-kube-version}
+|===
+
+次のコマンドで、これらの値を環境変数に設定します。
+====
+export AZ_LOC={location} +
+export AZ_RG={rg-name} +
+export AZ_AKS_NAME=myAKSCluster +
+export AZ_AKS_KUBE_VERSION={aks-kube-version}
+====
+
+AZ_ACR_NAME は、一意の値である必要があるので各自で任意の文字列を設定します。
+====
+export AZ_ACR_NAME=<ACRの一意の名称>
+====
+
+### Resource Group
+
+#### 1. リソースグループの作成
+
+次のコマンドを実行してリソースグループを設定します。
+```
+az group create --name $AZ_RG --location $AZ_LOC
+```
+
+
+### Azure Container Registry (ACR) の作成
+
+#### 1. 作成
+次のコマンドを実行して、ACRを作成します。
+```
+az acr create --resource-group $AZ_RG --name $AZ_ACR_NAME --sku Basic
+```
+
+#### 2. 確認
+次のコマンドを実行して、作成したACRを確認します。
+```
+az acr login --name $AZ_ACR_NAME
+```
+
+[NOTE]
+====
+`az acr login` コマンドを実行するクライアントでDockerデーモンが稼働している必要があります。
+====
+
+////
+{
+  "adminUserEnabled": false,
+  "creationDate": "2018-07-28T08:27:20.909706+00:00",
+  "id": "/subscriptions/93677bcc-692d-4de6-85b2-89c1bfe6e213/resourceGroups/iotedge-kube/providers/Microsoft.ContainerRegistry/registries/keomizoacr",
+  "location": "eastus",
+  "loginServer": "keomizoacr.azurecr.io",
+  "name": "keomizoacr",
+  "provisioningState": "Succeeded",
+  "resourceGroup": "iotedge-kube",
+  "sku": {
+    "name": "Basic",
+    "tier": "Basic"
+  },
+  "status": null,
+  "storageAccount": null,
+  "tags": {},
+  "type": "Microsoft.ContainerRegistry/registries"
+}
+////
+
+
+### Azure Kubernetes Service (AKS)の作成
+
+#### 1. Service Principal の作成
+
+次のコマンドを実行して、Service Principalを作成します。
+
+```
+az ad sp create-for-rbac --skip-assignment
+```
+
+作成結果として次のようなJSON文字列が出力されます。 *appId* と *password* は、以降のステップで利用するので環境変数に設定します。
+```
+{
+  "appId": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+  "displayName": "azure-cli-2018-07-25-23-24-26",
+  "name": "http://azure-cli-2018-07-25-23-24-26",
+  "password": "yyyyyyyy-yyyy-yyyy-yyyy-yyyyyyyyyyyy",
+  "tenant": "zzzzzzzz-zzzz-zzzz-zzzz-zzzzzzzzzzzz"
+}
+```
+
+出力された appId と password を環境変数に設定します。
+
+```
+export AZ_APP_ID=<出力されたappId>
+export AZ_PASSWORD=<出力されたpassword>
+```
+
+#### 2. ACR ID の確認
+
+次のコマンドを実行して、acrIdを確認します。acrIdは以降のステップで利用するので環境変数に設定しておきます。
+
+```
+az acr show --name $AZ_ACR_NAME --resource-group $AZ_RG --query "id" --output tsv
+```
+
+コマンドの実行結果として、次のようなフォーマットのacrIdが出力されます。
+`/subscriptions/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx/resourceGroups/iotedge-kube/providers/Microsoft.ContainerRegistry/registries/keomizoacr`
+
+出力さてた acrId を環境変数に設定します。
+
+```
+export AZ_ACR_ID=<出力されたacrId>
+```
+
+#### 3. 認証の設定
+手順1と手順2で確認した appId と acrId を利用して、ロールの割り当てを行います。
+
+```
+az role assignment create --assignee $AZ_APP_ID --role Reader --scope $AZ_ACR_ID
+```
+
+#### 4. Kubernetes クラスタの作成
+
+次のコマンドを実行して　AKS をデプロイします。
+
+コンテナを実行するノードを1台作成します。
+
+```
+az aks create \
+    --name $AZ_AKS_NAME \
+    --resource-group $AZ_RG \
+    --node-count 1 \
+    --generate-ssh-keys \
+    --service-principal $AZ_APP_ID \
+    --client-secret $AZ_PASSWORD \
+    --kubernetes-version $KUBE_VERSION
+```
+
+` - Running ..` と表示されてデプロイが始まるので完成するまで待ちます。
+
+
+#### 5. AKS クラスタのクレデンシャルの取得
+次のコマンドを実行して、クラスタにアクセスするためのクレデンシャルを取得します。
+```
+az aks get-credentials --name $AZ_AKS_NAME --resource-group $AZ_RG
+```
+クレデンシャルのファイルは、ホームディレクトリの `~/.kube/config` ディレクトリに作成されます。
+
+#### 6. AKS のノード確認
+次のコマンドを実行して、AKS のノードを確認します。
+```
+kubectl get nodes
+```
+
+////
+az ad sp create-for-rbac の結果
+{
+  "appId": "d4eafd7e-65cc-4bd1-9367-2c3ca5be50c0",
+  "displayName": "azure-cli-2018-07-25-23-24-26",
+  "name": "http://azure-cli-2018-07-25-23-24-26",
+  "password": "fb617db8-532a-4764-a5ca-739d6eeff8bc",
+  "tenant": "72f988bf-86f1-41af-91ab-2d7cd011db47"
+}
+
+az acr show の結果
+/subscriptions/93677bcc-692d-4de6-85b2-89c1bfe6e213/resourceGroups/iotedge-kube/providers/Microsoft.ContainerRegistry/registries/keomizoacr
+
+az role assignment create --assignee $AZ_APP_ID --role Reader --scope $AZ_ACR_ID の結果
+{
+  "canDelegate": null,
+  "id": "/subscriptions/93677bcc-692d-4de6-85b2-89c1bfe6e213/resourceGroups/iotedge-kube/providers/Microsoft.ContainerRegistry/registries/keomizoacr/providers/Microsoft.Authorization/roleAssignments/f34665fc-e25e-4e95-b36d-2161f1144d28",
+  "name": "f34665fc-e25e-4e95-b36d-2161f1144d28",
+  "principalId": "04bf6e7a-f94b-4ed4-a733-da3c034afe64",
+  "resourceGroup": "iotedge-kube",
+  "roleDefinitionId": "/subscriptions/93677bcc-692d-4de6-85b2-89c1bfe6e213/providers/Microsoft.Authorization/roleDefinitions/acdd72a7-3385-48ef-bd42-f606fba81ae7",
+  "scope": "/subscriptions/93677bcc-692d-4de6-85b2-89c1bfe6e213/resourceGroups/iotedge-kube/providers/Microsoft.ContainerRegistry/registries/keomizoacr",
+  "type": "Microsoft.Authorization/roleAssignments"
+}
+
+////
