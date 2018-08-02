@@ -1,3 +1,4 @@
 :location: eastus
 :rg-name: iotedge-kube
 :acr-name: keomizoacr
+:aks-kube-version: 1.10.5
