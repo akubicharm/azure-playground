@@ -1,6 +1,6 @@
 include::variables.yaml[]
 
-# AKS (Azure Kubernetes Service)のデプロイ
+## AKS (Azure Kubernetes Service)のデプロイ
 
 ### 参照URL
 AKS::
@@ -95,7 +95,7 @@ az acr login --name $AZ_ACR_NAME
 {
   "adminUserEnabled": false,
   "creationDate": "2018-07-28T08:27:20.909706+00:00",
-  "id": "/subscriptions/93677bcc-692d-4de6-85b2-89c1bfe6e213/resourceGroups/iotedge-kube/providers/Microsoft.ContainerRegistry/registries/keomizoacr",
+  "id": "/subscriptions/xxxxxxxxxx/resourceGroups/iotedge-kube/providers/Microsoft.ContainerRegistry/registries/keomizoacr",
   "location": "eastus",
   "loginServer": "keomizoacr.azurecr.io",
   "name": "keomizoacr",
@@ -182,7 +182,7 @@ az aks create \
     --kubernetes-version $KUBE_VERSION
 ```
 
-` - Running ..` と表示されてデプロイが始まるので完成するまで待ちます。
+`- Running ..` と表示されてデプロイが始まるので完成するまで待ちます。
 
 
 #### 5. AKS クラスタのクレデンシャルの取得
@@ -201,11 +201,11 @@ kubectl get nodes
 ////
 az ad sp create-for-rbac の結果
 {
-  "appId": "d4eafd7e-65cc-4bd1-9367-2c3ca5be50c0",
+  "appId": "",
   "displayName": "azure-cli-2018-07-25-23-24-26",
   "name": "http://azure-cli-2018-07-25-23-24-26",
-  "password": "fb617db8-532a-4764-a5ca-739d6eeff8bc",
-  "tenant": "72f988bf-86f1-41af-91ab-2d7cd011db47"
+  "password": "",
+  "tenant": ""
 }
 
 az acr show の結果
@@ -214,11 +214,11 @@ az acr show の結果
 az role assignment create --assignee $AZ_APP_ID --role Reader --scope $AZ_ACR_ID の結果
 {
   "canDelegate": null,
-  "id": "/subscriptions/93677bcc-692d-4de6-85b2-89c1bfe6e213/resourceGroups/iotedge-kube/providers/Microsoft.ContainerRegistry/registries/keomizoacr/providers/Microsoft.Authorization/roleAssignments/f34665fc-e25e-4e95-b36d-2161f1144d28",
-  "name": "f34665fc-e25e-4e95-b36d-2161f1144d28",
-  "principalId": "04bf6e7a-f94b-4ed4-a733-da3c034afe64",
+  "id": "/subscriptions/xxxxxxxx/resourceGroups/iotedge-kube/providers/Microsoft.ContainerRegistry/registries/keomizoacr/providers/Microsoft.Authorization/roleAssignments/yyyyyyyy",
+  "name": "",
+  "principalId": "",
   "resourceGroup": "iotedge-kube",
-  "roleDefinitionId": "/subscriptions/93677bcc-692d-4de6-85b2-89c1bfe6e213/providers/Microsoft.Authorization/roleDefinitions/acdd72a7-3385-48ef-bd42-f606fba81ae7",
+  "roleDefinitionId": "/subscriptions/xxxxxxxx/providers/Microsoft.Authorization/roleDefinitions/yyyyyy",
   "scope": "/subscriptions/93677bcc-692d-4de6-85b2-89c1bfe6e213/resourceGroups/iotedge-kube/providers/Microsoft.ContainerRegistry/registries/keomizoacr",
   "type": "Microsoft.Authorization/roleAssignments"
 }
